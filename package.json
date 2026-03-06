@@ -1,9 +1,7 @@
 {
-  "name": "racewalk-server",
+  "name": "racewalk-system",
   "version": "1.0.0",
-  "description": "Simple racewalk system server",
   "main": "server.js",
-  "type": "module",
   "scripts": {
     "start": "node server.js"
   },

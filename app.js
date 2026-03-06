@@ -1,5 +1,7 @@
 const qs = new URLSearchParams(location.search);
 const mode = qs.get("mode") || "judge";
+const pinFromUrl = qs.get("pin") || "";
+const serverFromUrl = qs.get("server") || "";
 
 const titleEl = document.getElementById("title");
 const subtitleEl = document.getElementById("subtitle");
@@ -25,20 +27,28 @@ const listEl = document.getElementById("list");
 let ws = null;
 let loggedIn = false;
 
+if (pinFromUrl) pinEl.value = pinFromUrl;
+if (serverFromUrl) serverUrlEl.value = serverFromUrl;
+
 initMode();
-
-function initMode() {
-  titleEl.textContent = `競歩システム [${mode}]`;
-  subtitleEl.textContent = `URLの最後に ?mode=${mode} が付いています`;
-
-  if (mode === "judge") judgeArea.classList.remove("hidden");
-  if (mode === "host") hostArea.classList.remove("hidden");
-}
 
 connectBtn.addEventListener("click", connectServer);
 sendBtn.addEventListener("click", sendRecord);
 saveJudgePinBtn.addEventListener("click", saveJudgePin);
 resetBtn.addEventListener("click", resetRecords);
+
+function initMode() {
+  titleEl.textContent = `競歩システム [${mode}]`;
+  subtitleEl.textContent = `URLの最後に ?mode=${mode} が付いています`;
+
+  if (mode === "judge" || mode === "chief") {
+    judgeArea.classList.remove("hidden");
+  }
+
+  if (mode === "host") {
+    hostArea.classList.remove("hidden");
+  }
+}
 
 function connectServer() {
   const raw = serverUrlEl.value.trim();
@@ -55,7 +65,15 @@ function connectServer() {
   }
 
   const wsUrl = toWsUrl(raw);
-  ws = new WebSocket(wsUrl);
+
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    statusEl.textContent = "接続失敗";
+    alert("サーバURLが正しくありません");
+    return;
+  }
+
   statusEl.textContent = "接続中...";
 
   ws.onopen = () => {
@@ -67,7 +85,13 @@ function connectServer() {
   };
 
   ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch (e) {
+      console.error("JSON parse error:", e);
+      return;
+    }
 
     if (msg.type === "login_ok") {
       loggedIn = true;
@@ -96,6 +120,7 @@ function connectServer() {
       alert(msg.message || "エラー");
       statusEl.textContent = "未接続";
       loggedIn = false;
+      return;
     }
   };
 
@@ -111,7 +136,7 @@ function connectServer() {
 }
 
 function sendRecord() {
-  if (!loggedIn || !ws) {
+  if (!loggedIn || !ws || ws.readyState !== WebSocket.OPEN) {
     alert("先に接続してください");
     return;
   }
@@ -135,12 +160,13 @@ function sendRecord() {
 }
 
 function saveJudgePin() {
-  if (!loggedIn || !ws) {
+  if (!loggedIn || !ws || ws.readyState !== WebSocket.OPEN) {
     alert("先に接続してください");
     return;
   }
 
   const newPin = newJudgePinEl.value.trim();
+
   if (!newPin) {
     alert("新しいPINを入力してください");
     return;
@@ -154,7 +180,7 @@ function saveJudgePin() {
 }
 
 function resetRecords() {
-  if (!loggedIn || !ws) {
+  if (!loggedIn || !ws || ws.readyState !== WebSocket.OPEN) {
     alert("先に接続してください");
     return;
   }
@@ -193,11 +219,11 @@ function renderList(records) {
 
     const time = document.createElement("div");
     time.className = "time";
-    time.textContent = r.time;
+    time.textContent = r.time || "";
 
     const main = document.createElement("div");
-    main.className = "main " + r.action;
-    main.textContent = `No.${r.bib} / ${labelAction(r.action)} / ${r.mode}`;
+    main.className = "main " + (r.action || "");
+    main.textContent = `No.${r.bib} / ${labelAction(r.action)} / ${r.mode || ""}`;
 
     row.appendChild(time);
     row.appendChild(main);
@@ -208,7 +234,7 @@ function renderList(records) {
 function labelAction(action) {
   if (action === "warning") return "警告";
   if (action === "red") return "赤カード";
-  return action;
+  return action || "";
 }
 
 function toWsUrl(raw) {

@@ -4,6 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const crypto = require("crypto");
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");

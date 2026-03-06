@@ -519,3 +519,81 @@ server.listen(PORT, "0.0.0.0", () => {
   }
   console.log(`WS: ws://<PC-IP>:${PORT}/ws`);
 });
+
+function makeToken(len = 16) {
+  return crypto.randomBytes(24).toString("base64url").slice(0, len);
+}
+
+function defaultTokens() {
+  return {
+    judge1: makeToken(),
+    judge2: makeToken(),
+    judge3: makeToken(),
+    judge4: makeToken(),
+    judge5: makeToken(),
+    chiefjudge: makeToken(),
+    recorder: makeToken(),
+    chief: makeToken(),
+    host: makeToken()
+  };
+}
+
+function loadTokens() {
+  if (!fs.existsSync(TOKENS_FILE)) {
+    const init = defaultTokens();
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(init, null, 2), "utf8");
+    return init;
+  }
+
+  try {
+    const obj = JSON.parse(fs.readFileSync(TOKENS_FILE, "utf8"));
+    return { ...defaultTokens(), ...obj };
+  } catch (e) {
+    const init = defaultTokens();
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(init, null, 2), "utf8");
+    return init;
+  }
+}
+
+function saveTokens(tokens) {
+  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2), "utf8");
+}
+
+function roleFromJudgeNo(judgeNo) {
+  const n = parseInt(judgeNo, 10);
+  if (![1, 2, 3, 4, 5].includes(n)) return null;
+  return `judge${n}`;
+}
+
+function verifyRoleToken(role, token) {
+  if (!role || !token) return false;
+  const tokens = loadTokens();
+  return tokens[role] && tokens[role] === token;
+}
+
+function getRoleFromToken(token) {
+  if (!token) return null;
+  const tokens = loadTokens();
+
+  for (const [role, value] of Object.entries(tokens)) {
+    if (value === token) return role;
+  }
+  return null;
+}
+
+function requireTokenByRole(roleGetter) {
+  return (req, res, next) => {
+    const token =
+      String(req.query.t || req.body?.t || req.headers["x-access-token"] || "");
+
+    const role = roleGetter(req);
+
+    if (!verifyRoleToken(role, token)) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
+
+    req.accessRole = role;
+    req.accessToken = token;
+    next();
+  };
+}

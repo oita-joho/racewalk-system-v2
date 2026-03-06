@@ -251,7 +251,9 @@ function snapshotFor(role, judgeId) {
 // =====================================================
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
-
+app.get("/", (req, res) => {
+  res.send("racewalk server running");
+});
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: "/ws" });
 

@@ -1340,7 +1340,7 @@ function applyRoute() {
   const p = routePath();
   const q = qs();
   rolePin = q.get("pin") || "";
-
+　　console.log("rolePin=", rolePin, "role=", role, "judgeId=", judgeId);
   if (p === "/host") {
     role = "host";
     judgeId = null;

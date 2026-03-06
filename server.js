@@ -280,12 +280,13 @@ wss.on("connection", (ws) => {
       const reqRole = String(msg.role || "judge");
       const reqJudgeId = msg.judgeId ? String(msg.judgeId) : null;
       const pin = String(msg.pin || "");
-
+　　　console.log("HELLO", { reqRole, reqJudgeId, pin });　
       if (!pinOkFor(reqRole, reqJudgeId, pin)) {
-        send(ws, { op: "REJECT", reason: "PINが違うか、この役割の権限がありません" });
-        try { ws.close(); } catch {}
-        return;
-      }
+  console.log("PIN NG", { reqRole, reqJudgeId, pin, pins: readPins() });
+  send(ws, { op: "REJECT", reason: "PINが違うか、この役割の権限がありません" });
+  try { ws.close(); } catch {}
+  return;
+}
 
       role = reqRole;
       judgeId = reqJudgeId;

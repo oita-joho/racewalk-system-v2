@@ -105,11 +105,11 @@ function judgeIdToRole(judgeId) {
 }
 
 function tokenOkFor(role, judgeId, token) {
-  const t = String(token || "").trim();
-  if (!t) return false;
-
   // board は公開運用
   if (role === "board") return true;
+
+  const t = String(token || "").trim();
+  if (!t) return false;
 
   const tokens = loadTokens();
 
@@ -127,13 +127,21 @@ function tokenOkFor(role, judgeId, token) {
 }
 
 function requiredRole(op) {
-  // opごとに許可するroleをサーバ側で固定
-  if (op === "LOAD_ROSTER" || op === "SAVE_ROSTER" || op === "CLEAR_ROSTER" || op === "APPLY_GROUP" || op === "GET_TOKENS" || op === "REGEN_TOKEN" || op === "REGEN_ALL_TOKENS") return ["host"];
-  if (op === "CONFIRM") return ["recorder"];     // 記録係だけ
-  if (op === "RESET") return ["chief"];          // 記録主任だけ
+  if (
+    op === "LOAD_ROSTER" ||
+    op === "SAVE_ROSTER" ||
+    op === "CLEAR_ROSTER" ||
+    op === "APPLY_GROUP" ||
+    op === "GET_TOKENS" ||
+    op === "REGEN_TOKEN" ||
+    op === "REGEN_ALL_TOKENS"
+  ) return ["host"];
+
+  if (op === "CONFIRM") return ["recorder"];
+  if (op === "RESET") return ["chief"];
   if (op === "NEW_CAUTION" || op === "NEW_WARNING") return ["judge"];
   if (op === "NEW_CHIEF") return ["chiefjudge"];
-  return null; // HELLO / その他
+  return null;
 }
 
 // =====================================================
@@ -156,14 +164,7 @@ function writeRoster(group, roster) {
 }
 
 // =====================================================
-// Runtime State (1大会/1PC)
-//
-// ★重要ルール（修正版）
-// 1) 同一審判は「同一競技者×同一反則×同一区分」を2回出せない
-//    → key に judgeId を含める
-// 2) 審判員は「警告を出した選手」にはその後 注意/警告を出せない
-//    ただし他の選手には出せる
-//    → judgeLaneWarnLock（raceId|judgeId|lane）
+// Runtime State
 // =====================================================
 const state = {
   raceId: String(Date.now()),
@@ -171,16 +172,9 @@ const state = {
   currentGroup: 1,
 
   rosterByLane: {},
-
-  // infractions
   byId: {},
-
-  // key = raceId|judgeId|lane|type|level  （pending/confirmed のみ登録）
   activeKeyToId: {},
-
-  // key = raceId|judgeId|lane -> true（そのレーンに警告を出したら、そのレーンは以後ロック。pendingでもロック）
   judgeLaneWarnLock: {},
-
   clients: new Set(),
 };
 
@@ -229,15 +223,13 @@ function applyGroup(group) {
   }
   state.rosterByLane = map;
 
-  // グループ切替時はログ初期化
   resetLogKeepRoster();
 }
 
-// 初期状態：グループ1を適用
 applyGroup(1);
 
 // =====================================================
-// WebSocket send helpers
+// WebSocket helpers
 // =====================================================
 function send(ws, obj) {
   try {
@@ -264,23 +256,17 @@ function snapshotFor(role, judgeId) {
   let items = Object.values(state.byId);
 
   if (role === "board") {
-    // 掲示板：確定した「警告」と「失格(2種)」だけ（告知・注意は出さない）
     items = items.filter(
       (x) =>
         x.status === "confirmed" &&
         (x.level === "warning" || x.level === "dsq1" || x.level === "dsq2")
     );
   } else if (role === "judge" && judgeId) {
-    // 審判：自分の送信だけ
     items = items.filter((x) => x.judgeId === judgeId);
   } else if (role === "chiefjudge") {
-    // 審判主任：自分の送信だけ
     items = items.filter((x) => x.judgeId === "CJ");
   } else if (role === "chief") {
-    // 記録主任：確定済のみ
     items = items.filter((x) => x.status === "confirmed");
-  } else {
-    // recorder / host：全部
   }
 
   items.sort((a, b) => (b.tsMs || 0) - (a.tsMs || 0));
@@ -298,9 +284,10 @@ function snapshotFor(role, judgeId) {
 // Server setup (HTTP + WS)
 // =====================================================
 const app = express();
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(__dirname));
+
 app.get("/", (req, res) => {
-  res.send("racewalk server running");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 const server = http.createServer(app);
@@ -324,7 +311,7 @@ wss.on("connection", (ws) => {
     const op = msg.op;
 
     // -----------------------------
-    // HELLO (token認証)
+    // HELLO
     // -----------------------------
     if (op === "HELLO") {
       const reqRole = String(msg.role || "judge");
@@ -348,21 +335,17 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // HELLO前は拒否
     if (!authed) {
       return reject(ws, "最初にHELLOしてください");
     }
 
-    // -----------------------------
-    // role制限（HELLO以外）
-    // -----------------------------
     const allowed = requiredRole(op);
     if (allowed && !allowed.includes(role)) {
       return reject(ws, "この操作は許可されていません（役割が違います）");
     }
 
     // -----------------------------
-    // Host tools (PC設定係)
+    // Host tools
     // -----------------------------
     if (op === "LOAD_ROSTER") {
       const g = safeGroup(msg.group);
@@ -421,7 +404,6 @@ wss.on("connection", (ws) => {
       });
 
       broadcast(snapshotFor("recorder", null));
-
       send(ws, { op: "OK", kind: "APPLY_GROUP", group: g });
       return;
     }
@@ -459,7 +441,6 @@ wss.on("connection", (ws) => {
     if (op === "REGEN_ALL_TOKENS") {
       const tokens = defaultTokens();
       saveTokens(tokens);
-
       send(ws, {
         op: "OK",
         kind: "REGEN_ALL_TOKENS",
@@ -477,14 +458,12 @@ wss.on("connection", (ws) => {
       if (!inf) return;
 
       inf.status = "confirmed";
-
-      // activeKeyToId / judgeLaneWarnLock は維持（禁止・ロック継続）
       broadcast({ op: "EVENT", kind: "UPDATE", item: inf });
       return;
     }
 
     // -----------------------------
-    // Chief actions（ログ初期化）
+    // Chief actions
     // -----------------------------
     if (op === "RESET") {
       resetLogKeepRoster();
@@ -499,14 +478,12 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // =================================================
-    // Judge actions（審判：注意/警告）
-    // =================================================
+    // -----------------------------
+    // Judge actions
+    // -----------------------------
     if (op === "NEW_CAUTION" || op === "NEW_WARNING") {
       const lane = String(msg.lane || "").trim();
       const type = msg.type === "loss" ? "loss" : "bent";
-
-      // 審判IDは「接続時のjudgeId」を使う（偽装防止）
       const jId = String(judgeId || "").trim();
 
       if (!lane) return reject(ws, "レーンが空です");
@@ -514,21 +491,18 @@ wss.on("connection", (ws) => {
       if (!ensureLaneRegistered(lane)) return reject(ws, "そのレーンは未登録です（設定係に確認）");
       if (!jId) return reject(ws, "審判IDが不明です");
 
-      // ルール2：同一審判がそのレーンに警告済なら以後 注意/警告不可
       const lk = lockKey(state.raceId, jId, lane);
       if (state.judgeLaneWarnLock[lk]) {
         return reject(ws, "この審判はこの競技者に既に警告を出しているため、以後は注意・警告を出せません");
       }
 
       const level = op === "NEW_CAUTION" ? "caution" : "warning";
-
-      // ルール1：同一審判は同一(lane/type/level)を2回出せない
       const kThis = keyOf(state.raceId, jId, lane, type, level);
+
       if (state.activeKeyToId[kThis]) {
         return reject(ws, "同一審判は同一競技者に同じ注意・警告を2回出せません");
       }
 
-      // 注意は即確定、警告はpending
       const status = level === "caution" ? "confirmed" : "pending";
 
       const inf = {
@@ -536,8 +510,8 @@ wss.on("connection", (ws) => {
         raceId: state.raceId,
         group: state.currentGroup,
         lane,
-        type,     // loss | bent
-        level,    // caution | warning
+        type,
+        level,
         hhmm: hhmmNow(),
         tsMs: Date.now(),
         judgeId: jId,
@@ -547,7 +521,6 @@ wss.on("connection", (ws) => {
       state.byId[inf.id] = inf;
       state.activeKeyToId[kThis] = inf.id;
 
-      // 警告は pending の時点でロック
       if (level === "warning") {
         state.judgeLaneWarnLock[lk] = true;
       }
@@ -556,10 +529,9 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // =================================================
-    // Chief Judge actions（審判主任：失格(2種)/告知）
-    //  - pendingで作成 → 記録が CONFIRM
-    // =================================================
+    // -----------------------------
+    // Chief Judge actions
+    // -----------------------------
     if (op === "NEW_CHIEF") {
       const lane = String(msg.lane || "").trim();
       const ctype =
@@ -575,8 +547,8 @@ wss.on("connection", (ws) => {
         raceId: state.raceId,
         group: state.currentGroup,
         lane,
-        type: ctype,   // dsq1 | dsq2 | notice
-        level: ctype,  // dsq1 | dsq2 | notice
+        type: ctype,
+        level: ctype,
         hhmm: hhmmNow(),
         tsMs: Date.now(),
         judgeId: "CJ",

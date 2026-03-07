@@ -600,6 +600,7 @@ wss.on("connection", (ws) => {
 // =====================================================
 server.listen(PORT, "0.0.0.0", () => {
   const ips = localIPv4Candidates();
+
   console.log(`Racewalk Web Host running: http://0.0.0.0:${PORT}`);
 
   if (ips.length) {

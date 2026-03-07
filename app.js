@@ -162,7 +162,16 @@ function exportCsv(){
   }
 
   const csv = "\uFEFF" + buildCsv(rows);
-  const fn = `racewalk_group${currentGroup}_${new Date().toISOString().slice(0,10)}.csv`;
+
+  function ymdJst() {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+  const fn = `racewalk_group${currentGroup}_${ymdJst()}.csv`;
   downloadTextFile(fn, csv, "text/csv;charset=utf-8");
 }
 

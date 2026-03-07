@@ -603,16 +603,16 @@ const TOKENS = {
 
   if (ips.length) {
     const ip = ips[0];
-    console.log(`Judge1:       http://${ip}:${PORT}/#/judge?jid=J1&t=${tokens.judge1}`);
-    console.log(`Judge2:       http://${ip}:${PORT}/#/judge?jid=J2&t=${tokens.judge2}`);
-    console.log(`Judge3:       http://${ip}:${PORT}/#/judge?jid=J3&t=${tokens.judge3}`);
-    console.log(`Judge4:       http://${ip}:${PORT}/#/judge?jid=J4&t=${tokens.judge4}`);
-    console.log(`Judge5:       http://${ip}:${PORT}/#/judge?jid=J5&t=${tokens.judge5}`);
-    console.log(`ChiefJudge:   http://${ip}:${PORT}/#/chiefjudge?t=${tokens.chiefjudge}`);
-    console.log(`Recorder:     http://${ip}:${PORT}/#/recorder?t=${tokens.recorder}`);
-    console.log(`Chief(Reset): http://${ip}:${PORT}/#/chief?t=${tokens.chief}`);
+    console.log(`Judge1:       http://${ip}:${PORT}/#/judge?jid=J1&t=${TOKENS.judge1}`);
+    console.log(`Judge2:       http://${ip}:${PORT}/#/judge?jid=J2&t=${TOKENS.judge2}`);
+    console.log(`Judge3:       http://${ip}:${PORT}/#/judge?jid=J3&t=${TOKENS.judge3}`);
+    console.log(`Judge4:       http://${ip}:${PORT}/#/judge?jid=J4&t=${TOKENS.judge4}`);
+    console.log(`Judge5:       http://${ip}:${PORT}/#/judge?jid=J5&t=${TOKENS.judge5}`);
+    console.log(`ChiefJudge:   http://${ip}:${PORT}/#/chiefjudge?t=${TOKENS.chiefjudge}`);
+    console.log(`Recorder:     http://${ip}:${PORT}/#/recorder?t=${TOKENS.recorder}`);
+    console.log(`Chief(Reset): http://${ip}:${PORT}/#/chief?t=${TOKENS.chief}`);
     console.log(`Board:        http://${ip}:${PORT}/#/board`);
-    console.log(`Host(PC):     http://${ip}:${PORT}/#/host?t=${tokens.host}`);
+    console.log(`Host(PC):     http://${ip}:${PORT}/#/host?t=${TOKENS.host}`);
   }
 
   console.log(`WS: ws://<PC-IP>:${PORT}/ws`);

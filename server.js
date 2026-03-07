@@ -33,9 +33,16 @@ function isHalfWidthDigits(s) {
 }
 
 function hhmmNow() {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const hh = parts.find(p => p.type === "hour")?.value || "00";
+  const mm = parts.find(p => p.type === "minute")?.value || "00";
+
   return `${hh}:${mm}`;
 }
 

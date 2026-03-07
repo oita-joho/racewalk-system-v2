@@ -61,6 +61,28 @@ function localIPv4Candidates() {
 // =====================================================
 // Token auth (tokens.json)
 // =====================================================
+// =====================================================
+// Token auth (fixed tokens)
+// =====================================================
+const TOKENS = {
+  judge1: "rw_J1_a8K3mP4xQ7n2",
+  judge2: "rw_J2_f6L9tR1vY3c8",
+  judge3: "rw_J3_p2N7kD5sW8m4",
+  judge4: "rw_J4_q9H2xB6uT1z5",
+  judge5: "rw_J5_m4C8jL2pR7y9",
+  chiefjudge: "rw_CJ_v7K1nQ5dX9p3",
+  recorder: "rw_REC_t3M8wF2kL6q1",
+  chief: "rw_CHIEF_b5P9rN4xD7s2",
+  host: "rw_HOST_z8T1mV6qK3c9",
+};
+
+function loadTokens() {
+  return TOKENS;
+}
+
+function saveTokens(tokens) {
+  // 固定トークンなので保存しない
+}
 function makeToken(len = 16) {
   return crypto.randomBytes(24).toString("base64url").slice(0, len);
 }
@@ -578,27 +600,6 @@ wss.on("connection", (ws) => {
 // =====================================================
 server.listen(PORT, "0.0.0.0", () => {
   const ips = localIPv4Candidates();
-  // =============================
-// 固定トークン（再発行するまで同じ）
-// =============================
-const TOKENS = {
-  judge1: "rw_J1_a8K3mP4xQ7n2",
-  judge2: "rw_J2_f6L9tR1vY3c8",
-  judge3: "rw_J3_p2N7kD5sW8m4",
-  judge4: "rw_J4_q9H2xB6uT1z5",
-  judge5: "rw_J5_m4C8jL2pR7y9",
-  chiefjudge: "rw_CJ_v7K1nQ5dX9p3",
-  recorder: "rw_REC_t3M8wF2kL6q1",
-  chief: "rw_CHIEF_b5P9rN4xD7s2",
-  host: "rw_HOST_z8T1mV6qK3c9",
-};
-function loadTokens() {
-  return TOKENS;
-}
-
-function saveTokens(tokens) {
-  // 固定トークンなので保存しない
-}
   console.log(`Racewalk Web Host running: http://0.0.0.0:${PORT}`);
 
   if (ips.length) {

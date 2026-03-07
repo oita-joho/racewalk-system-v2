@@ -133,6 +133,15 @@ function levelLabel(lv) {
   return lv;
 }
 
+function ymdJst() {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + serverClockOffset));
+}
+
 function exportCsv(){
   const list = (itemsAll||[])
     .filter(x => x.status !== "cancelled")
@@ -162,15 +171,6 @@ function exportCsv(){
   }
 
   const csv = "\uFEFF" + buildCsv(rows);
-
-  function ymdJst() {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
   const fn = `racewalk_group${currentGroup}_${ymdJst()}.csv`;
   downloadTextFile(fn, csv, "text/csv;charset=utf-8");
 }
@@ -224,7 +224,7 @@ function openPrint(){
 </head>
 <body>
   <h1>競歩 記録一覧（グループ${esc(currentGroup)}）</h1>
-  <div class="meta">raceId: ${esc(raceId)} / 出力: ${esc(new Date().toLocaleString())}</div>
+  <div class="meta">raceId: ${esc(raceId)} / 出力: ${esc(new Date(Date.now() + serverClockOffset).toLocaleString("ja-JP"))}</div>
   <table>
     <thead>
       <tr>
@@ -359,6 +359,21 @@ let uiLane = "";
 let hostSelectedGroup = 1;
 let hostRosterCache = [];
 let hostForm = { lane: "", bib: "", name: "", team: "" };
+
+let serverClockOffset = 0;
+
+// ===== time sync =====
+async function syncServerClock() {
+  try {
+    const r = await fetch("/api/time");
+    const j = await r.json();
+    const serverTs = j.ts;
+    const clientTs = Date.now();
+    serverClockOffset = serverTs - clientTs;
+  } catch (e) {
+    console.warn("clock sync failed");
+  }
+}
 
 // ===== ws =====
 function connect() {
@@ -1578,6 +1593,9 @@ function applyRoute() {
 window.addEventListener("hashchange", () => applyRoute());
 
 // init
+syncServerClock();
+setInterval(syncServerClock, 60000);
+
 connect();
 applyRoute();
 render();
